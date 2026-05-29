@@ -122,44 +122,22 @@ def parse_message(text: str):
                 if i>0:
                     counterpart = lines[i-1].strip()
                 break
-#            line = line.strip()
-#            if line and not line.startswith('[') and '입금' not in line and '출금' not in line and '110-' not in line and '.' not in line[:4]:
-#                counterpart = line
-#                break
+
+        # 출금이면 체크카드 중복 여부 확인
+        if not is_deposit:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id FROM transactions
+                WHERE type='card' AND amount=%s
+                AND tx_date BETWEEN %s - INTERVAL '5 minutes' AND %s + INTERVAL '5 minutes'
+            """, (amount, tx_date, tx_date))
+            dup = cur.fetchone()
+            conn.close()
+            if dup:
+                return None
+
         return {"type": "deposit" if is_deposit else "withdrawal", "amount": amount, "counterpart": counterpart, "tx_date": tx_date, "merchant": None, "description": counterpart}
-#        return {"type": "deposit" if is_deposit else "withdrawal", "amount": amount, "counterpart": counterpart, "tx_date": tx_date, "merchant": None}
-
-    # 체크카드 사용 시 출금 알림 — 중복 방지를 위해 무시
-    if ("출금" in text) and "80001" in text:
-        # 가맹점명이 포함된 출금은 체크카드 중복 알림이므로 스킵
-        conn = get_db()
-        cur = conn.cursor()
-        amount_match = re.search(r'출금\s*([\d,]+)원', text)
-        if amount_match:
-            amount = int(amount_match.group(1).replace(',', ''))
-            date_match = re.search(r'(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})', text)
-            if date_match:
-                tx_date = datetime.strptime(date_match.group(1), "%Y.%m.%d %H:%M:%S")
-                cur.execute("""
-                    SELECT id FROM transactions
-                    WHERE type='card' AND amount=%s
-                    AND tx_date BETWEEN %s - INTERVAL '5 minutes' AND %s + INTERVAL '5 minutes'
-                """, (amount, tx_date, tx_date))
-                if cur.fetchone():
-                    conn.close()
-                    return None  # 체크카드 중복, 스킵
-        conn.close()
-
-        # 중복 아닌 순수 출금
-        if amount_match:
-            amount = int(amount_match.group(1).replace(',', ''))
-        else:
-            return None
-        counterpart_match = re.search(r'원\s+(.+?)\s+\d{3}-', text)
-        counterpart = counterpart_match.group(1) if counterpart_match else ""
-        date_match = re.search(r'(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})', text)
-        tx_date = datetime.strptime(date_match.group(1), "%Y.%m.%d %H:%M:%S") if date_match else datetime.now()
-        return {"type": "withdrawal", "amount": amount, "counterpart": counterpart, "tx_date": tx_date, "merchant": None, "description": counterpart}
 
     # 기존 입금 형식
     if "입금" in text and "80001" in text:
