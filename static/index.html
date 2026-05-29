@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>용돈 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #faf9f6; --bg-card: #ffffff; --bg-surface: #f3f1ec;
+  --text-primary: #1a1a18; --text-secondary: #6b6a65; --text-tertiary: #9e9d97;
+  --border: rgba(0,0,0,0.08);
+  --accent: #2c6e49; --accent-light: #e8f5ee; --accent-text: #1b4332;
+  --danger: #c0392b; --danger-light: #fbeae8; --danger-text: #7b241c;
+  --blue: #2e6ca4; --blue-light: #e8f0f8;
+  --amber: #b5760a; --coral: #c75a30; --teal: #1d8a6a;
+  --font-display: 'DM Mono', monospace; --font-body: 'Noto Sans KR', sans-serif;
+  --radius: 14px; --radius-sm: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141413; --bg-card: #1e1e1c; --bg-surface: #252523;
+    --text-primary: #e8e7e3; --text-secondary: #9e9d97; --text-tertiary: #6b6a65;
+    --border: rgba(255,255,255,0.08);
+    --accent: #4ead7a; --accent-light: #1a2f24; --accent-text: #8fd4aa;
+    --danger: #e07060; --danger-light: #2d1c1a; --danger-text: #f0a89e;
+    --blue: #5a9fd4; --blue-light: #1a2530;
+    --amber: #d4a040; --coral: #e07850; --teal: #40c4a0;
+  }
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font-body); background: var(--bg); color: var(--text-primary); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+.container { max-width: 520px; margin: 0 auto; padding: 32px 20px 60px; }
+.header { margin-bottom: 32px; }
+.header-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 8px; font-weight: 500; }
+.balance-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 10px; }
+.balance-currency { font-family: var(--font-display); font-size: 18px; color: var(--text-secondary); }
+.balance-amount { font-family: var(--font-display); font-size: 42px; font-weight: 500; letter-spacing: -2px; line-height: 1; }
+.balance-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; padding: 4px 12px; border-radius: 20px; }
+.badge-up { background: var(--accent-light); color: var(--accent-text); }
+.badge-down { background: var(--danger-light); color: var(--danger-text); }
+.period-tabs { display: flex; gap: 6px; margin-bottom: 24px; }
+.period-tab { font-family: var(--font-body); font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+.period-tab:hover { border-color: var(--text-tertiary); }
+.period-tab.active { background: var(--text-primary); color: var(--bg); border-color: var(--text-primary); }
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 28px; }
+.stat-card { background: var(--bg-surface); border-radius: var(--radius-sm); padding: 14px 16px; }
+.stat-label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 6px; }
+.stat-value { font-family: var(--font-display); font-size: 16px; font-weight: 500; }
+.stat-value.income { color: var(--accent); }
+.stat-value.expense { color: var(--danger); }
+.section-label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); font-weight: 500; margin-bottom: 14px; }
+.chart-container { position: relative; height: 180px; margin-bottom: 32px; background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; }
+.category-list { margin-bottom: 32px; }
+.cat-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cat-name { font-size: 13px; width: 80px; flex-shrink: 0; }
+.cat-bar-wrap { flex: 1; height: 4px; background: var(--bg-surface); border-radius: 2px; overflow: hidden; }
+.cat-bar { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+.cat-amount { font-family: var(--font-display); font-size: 12px; color: var(--text-secondary); min-width: 70px; text-align: right; }
+.divider { height: 1px; background: var(--border); margin: 8px 0 24px; }
+.tx-list { display: flex; flex-direction: column; }
+.tx-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.tx-row:last-child { border-bottom: none; }
+.tx-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; background: var(--bg-surface); }
+.tx-info { flex: 1; min-width: 0; }
+.tx-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx-date { font-size: 11px; color: var(--text-tertiary); }
+.tx-amount { font-family: var(--font-display); font-size: 13px; font-weight: 500; flex-shrink: 0; }
+.tx-amount.pos { color: var(--accent); }
+.tx-amount.neg { color: var(--danger); }
+.tx-delete { width: 28px; height: 28px; border: none; background: transparent; color: var(--text-tertiary); font-size: 14px; cursor: pointer; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; opacity: 0; }
+.tx-row:hover .tx-delete { opacity: 1; }
+.tx-delete:hover { background: var(--danger-light); color: var(--danger-text); }
+@media (hover: none) { .tx-delete { opacity: 0.5; } }
+.manual-section { margin-top: 32px; }
+.manual-toggle { font-family: var(--font-body); width: 100%; padding: 12px; border-radius: var(--radius-sm); border: 1px dashed var(--border); background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: all 0.2s; }
+.manual-toggle:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
+.manual-form { display: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-top: 12px; }
+.manual-form.open { display: block; }
+.form-row { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
+.form-input { font-family: var(--font-body); width: 100%; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary); font-size: 14px; outline: none; transition: border-color 0.2s; }
+.form-input:focus { border-color: var(--text-tertiary); }
+.form-type-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.form-type-btn { font-family: var(--font-body); flex: 1; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+.form-type-btn.active-deposit { background: var(--accent-light); color: var(--accent-text); border-color: var(--accent); }
+.form-type-btn.active-withdrawal { background: var(--danger-light); color: var(--danger-text); border-color: var(--danger); }
+.form-type-btn.active-card { background: var(--blue-light); color: var(--blue); border-color: var(--blue); }
+.form-submit { font-family: var(--font-body); width: 100%; padding: 10px; border-radius: var(--radius-sm); border: none; background: var(--text-primary); color: var(--bg); font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
+.form-submit:hover { opacity: 0.85; }
+.adjust-section { margin-top: 12px; }
+.adjust-form { display: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-top: 12px; }
+.adjust-form.open { display: block; }
+.loading { text-align: center; padding: 40px; color: var(--text-tertiary); font-size: 13px; }
+.empty { text-align: center; padding: 30px; color: var(--text-tertiary); font-size: 13px; }
+.confirm-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.confirm-box { background: var(--bg-card); border-radius: var(--radius); padding: 24px; max-width: 320px; width: 90%; text-align: center; border: 1px solid var(--border); }
+.confirm-box p { font-size: 14px; margin-bottom: 20px; }
+.confirm-btns { display: flex; gap: 10px; }
+.confirm-cancel { font-family: var(--font-body); flex: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer; }
+.confirm-delete { font-family: var(--font-body); flex: 1; padding: 10px; border-radius: var(--radius-sm); border: none; background: var(--danger); color: white; font-size: 13px; cursor: pointer; font-weight: 500; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.4s ease forwards; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header fade-in">
+    <div class="header-label">현재 잔액</div>
+    <div class="balance-row">
+      <span class="balance-currency">&#8361;</span>
+      <span class="balance-amount" id="balanceDisplay">---</span>
+    </div>
+    <div id="balanceBadge"></div>
+  </div>
+  <div class="period-tabs fade-in" style="animation-delay: 0.05s;">
+    <button class="period-tab active" onclick="setPeriod('week', this)">이번 주</button>
+    <button class="period-tab" onclick="setPeriod('month', this)">이번 달</button>
+    <button class="period-tab" onclick="setPeriod('3month', this)">3개월</button>
+  </div>
+  <div class="stats-grid fade-in" style="animation-delay: 0.1s;">
+    <div class="stat-card"><div class="stat-label">입금</div><div class="stat-value income" id="statIn">---</div></div>
+    <div class="stat-card"><div class="stat-label">지출</div><div class="stat-value expense" id="statOut">---</div></div>
+    <div class="stat-card"><div class="stat-label">거래</div><div class="stat-value" id="statCnt">---</div></div>
+  </div>
+  <div class="fade-in" style="animation-delay: 0.15s;">
+    <div class="section-label">일별 지출</div>
+    <div class="chart-container"><canvas id="spendChart"></canvas></div>
+  </div>
+  <div class="fade-in" style="animation-delay: 0.2s;">
+    <div class="section-label">카테고리별</div>
+    <div class="category-list" id="catList"><div class="loading">불러오는 중...</div></div>
+  </div>
+  <div class="divider"></div>
+  <div class="fade-in" style="animation-delay: 0.25s;">
+    <div class="section-label">최근 거래 내역</div>
+    <div class="tx-list" id="txList"><div class="loading">불러오는 중...</div></div>
+  </div>
+  <div class="manual-section fade-in" style="animation-delay: 0.3s;">
+    <button class="manual-toggle" onclick="toggleManual()">+ 거래 내역 입력</button>
+    <div class="manual-form" id="manualForm">
+      <div class="form-type-row">
+        <button class="form-type-btn active-deposit" id="typeDeposit" onclick="setType('deposit')">입금</button>
+        <button class="form-type-btn" id="typeWithdrawal" onclick="setType('withdrawal')">출금</button>
+        <button class="form-type-btn" id="typeCard" onclick="setType('card')">카드</button>
+      </div>
+      <div class="form-row"><label class="form-label">금액 (원)</label><input type="number" class="form-input" id="manualAmount" placeholder="10000"></div>
+      <div class="form-row"><label class="form-label">내용</label><input type="text" class="form-input" id="manualDesc" placeholder="용돈, 간식, 가맹점명 등"></div>
+      <div class="form-row" id="merchantRow" style="display:none;"><label class="form-label">가맹점 (카드 결제 시)</label><input type="text" class="form-input" id="manualMerchant" placeholder="가맹점명"></div>
+      <div class="form-row"><label class="form-label">날짜/시간</label><input type="datetime-local" class="form-input" id="manualDate"></div>
+      <div class="form-row"><label class="form-label">메모 (선택)</label><input type="text" class="form-input" id="manualNote" placeholder=""></div>
+      <button class="form-submit" onclick="submitManual()">저장</button>
+    </div>
+  </div>
+  <div class="adjust-section fade-in" style="animation-delay: 0.35s;">
+    <button class="manual-toggle" onclick="toggleAdjust()">잔액 보정</button>
+    <div class="adjust-form" id="adjustForm">
+      <div class="form-row"><label class="form-label">실제 잔액 (원)</label><input type="number" class="form-input" id="adjustBalance" placeholder="187400"></div>
+      <div class="form-row"><label class="form-label">보정 사유</label><input type="text" class="form-input" id="adjustReason" placeholder="은행 잔액 확인"></div>
+      <button class="form-submit" onclick="submitAdjust()">보정 저장</button>
+    </div>
+  </div>
+</div>
+<div class="confirm-overlay" id="confirmOverlay" style="display:none;">
+  <div class="confirm-box">
+    <p id="confirmMsg">이 거래를 삭제하시겠습니까?</p>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="closeConfirm()">취소</button>
+      <button class="confirm-delete" onclick="confirmDelete()">삭제</button>
+    </div>
+  </div>
+</div>
+<script>
+const API = window.location.origin + '/peach_treasury';
+let currentPeriod = 'week', manualType = 'deposit', chart = null, pendingDeleteId = null;
+function fmt(n) { return Math.abs(n).toLocaleString('ko-KR'); }
+function getIcon(type, merchant) {
+  if (type === 'deposit') return '&#x1F4B0;';
+  if (merchant) { const m = merchant.toLowerCase(); if (m.includes('gs25')||m.includes('cu')||m.includes('세븐')) return '&#x1F3EA;'; if (m.includes('롯데리아')||m.includes('맥도날드')||m.includes('버거')) return '&#x1F354;'; if (m.includes('스타벅스')||m.includes('카페')||m.includes('커피')) return '&#x2615;'; if (m.includes('지하철')||m.includes('버스')||m.includes('택시')) return '&#x1F687;'; }
+  if (type === 'withdrawal') return '&#x1F4B8;'; if (type === 'card') return '&#x1F4B3;'; return '&#x1F4DD;';
+}
+function formatDate(dateStr) {
+  const d = new Date(dateStr), now = new Date(), diff = now - d;
+  if (diff < 86400000 && d.getDate() === now.getDate()) return '오늘 ' + d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+  const y = new Date(now); y.setDate(y.getDate() - 1);
+  if (d.getDate() === y.getDate() && d.getMonth() === y.getMonth()) return '어제 ' + d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+  return (d.getMonth()+1) + '월 ' + d.getDate() + '일';
+}
+function getTypeName(type) { return { deposit:'입금', withdrawal:'출금', card:'카드', manual:'수동' }[type] || type; }
+async function loadBalance() { try { const r = await fetch(API+'/balance'); const d = await r.json(); document.getElementById('balanceDisplay').textContent = fmt(d.balance); } catch(e) { document.getElementById('balanceDisplay').textContent = '---'; } }
+async function loadSummary() {
+  try { const r = await fetch(API+'/summary?period='+currentPeriod); const d = await r.json();
+    document.getElementById('statIn').textContent = '+'+fmt(d.total_in); document.getElementById('statOut').textContent = '-'+fmt(d.total_out); document.getElementById('statCnt').textContent = d.count;
+    if (d.total_in > d.total_out) document.getElementById('balanceBadge').innerHTML = '<span class="balance-badge badge-up">&#9650; 수입이 지출보다 +'+fmt(d.total_in-d.total_out)+'원 많음</span>';
+    else if (d.total_out > d.total_in) document.getElementById('balanceBadge').innerHTML = '<span class="balance-badge badge-down">&#9660; 지출이 수입보다 '+fmt(d.total_out-d.total_in)+'원 많음</span>';
+    renderCategories(d.merchants||[]);
+  } catch(e) { console.error(e); }
+}
+async function loadTransactions() { try { const r = await fetch(API+'/transactions?limit=20'); const d = await r.json(); renderTransactions(d); renderChart(d); } catch(e) { document.getElementById('txList').innerHTML = '<div class="empty">거래 내역이 없습니다</div>'; } }
+function renderCategories(merchants) {
+  const el = document.getElementById('catList');
+  if (!merchants.length) { el.innerHTML = '<div class="empty">카드 결제 내역이 없습니다</div>'; return; }
+  const colors = ['#2e6ca4','#1d8a6a','#c75a30','#b5760a','#8a5cb5'], max = Math.max(...merchants.map(m=>m.amount));
+  el.innerHTML = merchants.map((m,i) => { const c=colors[i%colors.length], p=Math.round(m.amount/max*100); return '<div class="cat-row"><span class="cat-dot" style="background:'+c+'"></span><span class="cat-name">'+(m.name||'기타')+'</span><div class="cat-bar-wrap"><div class="cat-bar" style="width:'+p+'%;background:'+c+'"></div></div><span class="cat-amount">-'+fmt(m.amount)+'원</span></div>'; }).join('');
+}
+function renderTransactions(txs) {
+  const el = document.getElementById('txList');
+  if (!txs.length) { el.innerHTML = '<div class="empty">거래 내역이 없습니다</div>'; return; }
+  el.innerHTML = txs.map(t => {
+    const isIncome = t.type==='deposit', icon = getIcon(t.type,t.merchant), name = t.merchant||t.counterpart||t.description||getTypeName(t.type);
+    const amtClass = isIncome?'pos':'neg', amtSign = isIncome?'+':'-', dateStr = formatDate(t.tx_date), tag = t.is_manual?'수동':getTypeName(t.type);
+    return '<div class="tx-row"><div class="tx-icon">'+icon+'</div><div class="tx-info"><div class="tx-name">'+name+'</div><div class="tx-date">'+dateStr+' · '+tag+'</div></div><span class="tx-amount '+amtClass+'">'+amtSign+fmt(t.amount)+'원</span><button class="tx-delete" onclick="askDelete('+t.id+',\''+name.replace(/'/g,"\\'")+'\','+t.amount+')" title="삭제">&#x2715;</button></div>';
+  }).join('');
+}
+function renderChart(txs) {
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches, days = {}, now = new Date(); let rangeStart;
+  if (currentPeriod==='week') { rangeStart=new Date(now); rangeStart.setDate(rangeStart.getDate()-6); }
+  else if (currentPeriod==='month') { rangeStart=new Date(now.getFullYear(),now.getMonth(),1); }
+  else { rangeStart=new Date(now); rangeStart.setDate(rangeStart.getDate()-89); }
+  for (let d=new Date(rangeStart); d<=now; d.setDate(d.getDate()+1)) { days[(d.getMonth()+1)+'/'+d.getDate()]=0; }
+  txs.forEach(t => { if (t.type==='deposit') return; const d=new Date(t.tx_date); if (d<rangeStart) return; const k=(d.getMonth()+1)+'/'+d.getDate(); if (days[k]!==undefined) days[k]+=t.amount; });
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('spendChart'), { type:'bar', data:{ labels:Object.keys(days), datasets:[{ data:Object.values(days), backgroundColor:isDark?'rgba(78,173,122,0.6)':'rgba(44,110,73,0.75)', borderRadius:3, borderSkipped:false }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>'-'+ctx.raw.toLocaleString('ko-KR')+'원' } } },
+      scales:{ x:{ grid:{display:false}, ticks:{ color:isDark?'#6b6a65':'#9e9d97', font:{size:10}, maxRotation:0, autoSkip:true, maxTicksLimit:8 } }, y:{ grid:{ color:isDark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)' }, ticks:{ color:isDark?'#6b6a65':'#9e9d97', font:{size:10}, callback:v=>v===0?'0':Math.round(v/1000)+'k' } } } } });
+}
+function setPeriod(p,btn) { currentPeriod=p; document.querySelectorAll('.period-tab').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); loadSummary(); loadTransactions(); }
+function toggleManual() { document.getElementById('manualForm').classList.toggle('open'); }
+function toggleAdjust() { document.getElementById('adjustForm').classList.toggle('open'); }
+function setType(type) {
+  manualType=type;
+  document.getElementById('typeDeposit').className='form-type-btn'+(type==='deposit'?' active-deposit':'');
+  document.getElementById('typeWithdrawal').className='form-type-btn'+(type==='withdrawal'?' active-withdrawal':'');
+  document.getElementById('typeCard').className='form-type-btn'+(type==='card'?' active-card':'');
+  document.getElementById('merchantRow').style.display=type==='card'?'block':'none';
+}
+async function submitManual() {
+  const amount=parseInt(document.getElementById('manualAmount').value), desc=document.getElementById('manualDesc').value, note=document.getElementById('manualNote').value, dateVal=document.getElementById('manualDate').value, merchant=document.getElementById('manualMerchant').value;
+  if (!amount||amount<=0) { alert('금액을 입력하세요'); return; }
+  const body={type:manualType,amount:amount,description:desc,note:note};
+  if (dateVal) body.tx_date=new Date(dateVal).toISOString();
+  if (merchant&&manualType==='card') body.merchant=merchant;
+  try { await fetch(API+'/transaction/manual',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    ['manualAmount','manualDesc','manualNote','manualDate','manualMerchant'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('manualForm').classList.remove('open'); loadAll();
+  } catch(e) { alert('저장 실패'); }
+}
+async function submitAdjust() {
+  const balance=parseInt(document.getElementById('adjustBalance').value), reason=document.getElementById('adjustReason').value;
+  if (isNaN(balance)) { alert('잔액을 입력하세요'); return; }
+  try { await fetch(API+'/balance/adjust',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({balance:balance,reason:reason})});
+    document.getElementById('adjustBalance').value=''; document.getElementById('adjustReason').value='';
+    document.getElementById('adjustForm').classList.remove('open'); loadAll();
+  } catch(e) { alert('보정 실패'); }
+}
+function askDelete(id,name,amount) { pendingDeleteId=id; document.getElementById('confirmMsg').textContent='"'+name+' '+fmt(amount)+'원" 거래를 삭제하시겠습니까?'; document.getElementById('confirmOverlay').style.display='flex'; }
+function closeConfirm() { pendingDeleteId=null; document.getElementById('confirmOverlay').style.display='none'; }
+async function confirmDelete() { if (!pendingDeleteId) return; try { await fetch(API+'/transactions/'+pendingDeleteId,{method:'DELETE'}); closeConfirm(); loadAll(); } catch(e) { alert('삭제 실패'); } }
+function loadAll() { loadBalance(); loadSummary(); loadTransactions(); }
+loadAll(); setInterval(loadAll, 30000);
+</script>
+</body>
+</html>
