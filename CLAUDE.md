@@ -56,8 +56,8 @@ Python 3.14+, PostgreSQL. 패키지: fastapi, uvicorn, psycopg2, pydantic, reque
 
 ## 개발 시 주의사항
 
-- `.env`에 DB 접속정보와 텔레그램 토큰이 있음 — 커밋 금지
-- `main0.py`, `main.py'`, `main.py.save`는 백업 파일 — 건드리지 말 것
+- `.env`에 DB 접속정보와 텔레그램 토큰이 있음 — `.gitignore`에 등록됨
+- 버전 관리는 git으로 — 수동 백업 파일(main0.py 등) 만들지 말 것
 - SMS 파싱(`parse_message`)에 연도 "2026"이 하드코딩되어 있음 (line 87, 103)
 - 체크카드 결제 시 카드승인 + 출금알림이 동시에 옴 → 중복 방지 로직 있음 (line 132-162)
 - `summary` 엔드포인트의 f-string SQL은 `period` 값이 코드 내에서 분기되므로 사용자 입력이 직접 들어가지 않음
