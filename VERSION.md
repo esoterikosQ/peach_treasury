@@ -2,6 +2,13 @@
 
 ## 2026-05-30
 
+### 거래 삭제 기능 수정
+- 삭제 버튼 클릭 시 실제 삭제가 되지 않던 버그 수정
+- 원인: `app.mount("/peach_treasury", StaticFiles(...))` 가 `/peach_treasury/*` 경로를 통째로 가로채 DELETE 요청이 StaticFiles로 빠짐
+- 수정: mount 제거, `@router.get("/")` 라우트로 `index.html` 직접 서빙
+- `@app.exception_handler` 데코레이터 `@` 누락 수정
+- `contetn` → `content` 오타 수정
+
 ### 체크카드 중복 거래 방지 로직 수정
 - 체크카드 결제 시 카드승인 + 출금알림이 동시에 들어와 이중 기록되던 버그 수정
 - 원인: `[신한 슈퍼SOL]` 멀티라인 블록(line 107)이 출금 알림을 먼저 처리하여 중복 방지 로직(line 132)에 도달하지 못함

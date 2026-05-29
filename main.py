@@ -8,7 +8,7 @@ import re
 import traceback
 
 # 프론트엔드 구현
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 # 서브패스 구현
 from fastapi import APIRouter
@@ -296,17 +296,18 @@ async def delete_transaction(tx_id: int):
     conn.close()
     return {"ok": True}
 
+@router.get("/")
+async def serve_index():
+    return FileResponse("static/index.html")
+
 from fastapi.responses import JSONResponse
 
-app.exception_handler(Exception)
+@app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     error_logger.error(f"{request.url.path} - {exc}", exc_info=True)
-    return JSONResponse(status_code=500, contetn={"detail": "Internal Server Error"})
-
-
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 app.include_router(router)
-app.mount("/peach_treasury", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
