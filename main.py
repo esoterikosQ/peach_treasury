@@ -78,7 +78,7 @@ def parse_message(text: str):
 
     # [신한체크승인] 형식 — 체크카드 결제
     if "[신한체크승인]" in text and "2363" in text:
-        amount_match = re.search(r'\(금액\)([\d,]+)원', text)
+        amount_match = re.search(r'(?:\(금액\)|승인금액:\s*)([\d,]+)원', text)
         if not amount_match:
             return None
         amount = int(amount_match.group(1).replace(',', ''))
@@ -87,7 +87,9 @@ def parse_message(text: str):
             tx_date = datetime.strptime(f"2026/{date_match.group(1)} {date_match.group(2)}", "%Y/%m/%d %H:%M")
         else:
             tx_date = datetime.now()
-        merchant_match = re.search(r'원\s+(.+)$', text)
+        merchant_match = re.search(r'가맹점명:\s*(.+)', text)
+        if not merchant_match:
+            merchant_match = re.search(r'원\s+(.+)$', text)
         merchant = merchant_match.group(1).strip() if merchant_match else ""
         return {"type": "card", "amount": amount, "merchant": merchant, "counterpart": None, "tx_date": tx_date, "description": merchant}
 
