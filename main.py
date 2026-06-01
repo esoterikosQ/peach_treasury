@@ -141,6 +141,31 @@ def parse_message(text: str):
 
         return {"type": "deposit" if is_deposit else "withdrawal", "amount": amount, "counterpart": counterpart, "tx_date": tx_date, "merchant": None, "description": counterpart}
 
+    # 단독 출금 형식 ([신한 슈퍼SOL] 헤더 없는 출금 알림)
+    if "출금" in text and "80001" in text:
+        amount_match = re.search(r'출금\s*([\d,]+)원', text)
+        if not amount_match:
+            return None
+        amount = int(amount_match.group(1).replace(',', ''))
+        date_match = re.search(r'(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})', text)
+        tx_date = datetime.strptime(date_match.group(1), "%Y.%m.%d %H:%M:%S") if date_match else datetime.now()
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id FROM transactions
+            WHERE type='card' AND amount=%s
+            AND tx_date BETWEEN %s - INTERVAL '5 minutes' AND %s + INTERVAL '5 minutes'
+        """, (amount, tx_date, tx_date))
+        dup = cur.fetchone()
+        conn.close()
+        if dup:
+            return None
+
+        counterpart_match = re.search(r'원\s+(.+?)\s+\d{3}-', text)
+        counterpart = counterpart_match.group(1) if counterpart_match else ""
+        return {"type": "withdrawal", "amount": amount, "counterpart": counterpart, "tx_date": tx_date, "merchant": None, "description": counterpart}
+
     # 기존 입금 형식
     if "입금" in text and "80001" in text:
         # "용돈"이라는 메시지가 들어가지 않은 입금 내역은 스킵
